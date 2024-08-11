@@ -1,4 +1,6 @@
 import math
+import threading
+import time
 
 class LeftStick:
     # Deadzone values for different states
@@ -35,13 +37,32 @@ class LeftStick:
             self.update()
 
     def rotate_clockwise(self):
-        self.rotation = (self.rotation + 3) % 360  # Decrease rotation for clockwise
-        self.rotation = self.correct_deadzone_clockwise(self.rotation)
-        self.update()
+        target_rotation = (self.rotation + 3) % 360  # Decrease rotation for clockwise
+        corrected_rotation = self.correct_deadzone_clockwise(target_rotation)
+        threading.Thread(target=self.animate_rotation, args=(self.rotation, corrected_rotation)).start()
 
     def rotate_counterclockwise(self):
-        self.rotation = (self.rotation - 3) % 360  # Increase rotation for counterclockwise
-        self.rotation = self.correct_deadzone_counterclockwise(self.rotation)
+        target_rotation = (self.rotation - 3) % 360  # Increase rotation for counterclockwise
+        corrected_rotation = self.correct_deadzone_counterclockwise(target_rotation)
+        threading.Thread(target=self.animate_rotation, args=(self.rotation, corrected_rotation)).start()
+
+    def animate_rotation(self, start_rotation, end_rotation):
+        """Smoothly animate rotation from start to end."""
+        steps = 12  # 30 FPS for 0.2 seconds => 0.2 * 30 = 6 steps
+        step_duration = 0.2 / steps  # Duration of each step
+        rotation_diff = (end_rotation - start_rotation) % 360
+        if rotation_diff > 180:
+            rotation_diff -= 360
+        increment = rotation_diff / steps
+
+        for _ in range(steps):
+            start_rotation = (start_rotation + increment) % 360
+            self.rotation = start_rotation
+            self.update()
+            time.sleep(step_duration)
+
+        # Ensure final rotation is exactly the corrected end rotation
+        self.rotation = end_rotation
         self.update()
 
     def get_current_deadzone(self):
@@ -51,7 +72,6 @@ class LeftStick:
 
     def correct_deadzone_clockwise(self, rotation):
         """Adjust rotation to avoid deadzone values."""
-
         dz = self.get_current_deadzone()
         if dz == 0:
             return rotation  # No correction needed for zero deadzone
@@ -59,21 +79,21 @@ class LeftStick:
         # Jumping out of neutral state to first non-deadzone value
         if dz > rotation >= 0:
             return dz
-        elif 90+dz > rotation >= 90:
-            return 90+dz
-        elif 180+dz > rotation >= 180:
-            return 180+dz
-        elif 270+dz > rotation >= 270:
-            return 270+dz
+        elif 90 + dz > rotation >= 90:
+            return 90 + dz
+        elif 180 + dz > rotation >= 180:
+            return 180 + dz
+        elif 270 + dz > rotation >= 270:
+            return 270 + dz
         
         # Jumping into neutral state if entering deadzone
-        if 360-dz < rotation < 360:
+        if 360 - dz < rotation < 360:
             return 0
-        elif 90-dz < rotation < 90:
+        elif 90 - dz < rotation < 90:
             return 90  
-        elif 180-dz < rotation < 180:
+        elif 180 - dz < rotation < 180:
             return 180  
-        elif 270-dz < rotation < 270:
+        elif 270 - dz < rotation < 270:
             return 270 
         
         # Do nothing if rotation is in non-deadzone area
@@ -86,14 +106,14 @@ class LeftStick:
             return rotation  # No correction needed for zero deadzone
 
         # Jumping out of neutral state to first non-deadzone value
-        if 360-dz < rotation < 360:
-            return 360-dz   
-        elif 90-dz < rotation <= 90:
-            return 90-dz
-        elif 180-dz < rotation <= 180:
-            return 180-dz
-        elif 270-dz < rotation <= 270:
-            return 270-dz
+        if 360 - dz < rotation < 360:
+            return 360 - dz   
+        elif 90 - dz < rotation <= 90:
+            return 90 - dz
+        elif 180 - dz < rotation <= 180:
+            return 180 - dz
+        elif 270 - dz < rotation <= 270:
+            return 270 - dz
 
         # Jumping into neutral state if entering deadzone
         if 0 < rotation < dz:
